@@ -22,10 +22,13 @@ const workerMap: { [key: string]: (params: any) => Promise<any> } = {
 async function callWorkerWithRetry(taskID: string, params: any, traceId: string) {
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
+            console.debug(`[DEBUG] traceId=${traceId} - Calling worker ${taskID} with params: ${JSON.stringify(params)}`);
             const result = await workerMap[taskID](params);
             await logStep(taskID, `Success on attempt ${attempt} [traceId: ${traceId}]`, "success");
+            console.debug(`[DEBUG] traceId=${traceId} - Worker ${taskID} succeeded with result: ${JSON.stringify(result)}`);
             return result;
         } catch (error: any) {
+            console.error(`[DEBUG] traceId=${traceId} - Worker ${taskID} failed on attempt ${attempt}: ${error.message}`);
             await logStep(taskID, `Attempt ${attempt} failed: ${error.message} [traceId: ${traceId}]`, "error");
             if (attempt === MAX_RETRIES) throw new Error(`Task ${taskID} failed after ${MAX_RETRIES} attempts`);
         }

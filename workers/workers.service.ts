@@ -36,6 +36,7 @@ export async function validateTaskInput(inputData: any): Promise<boolean> {
  * @returns The result of the mathematical operation.
  */
 export async function mathWorker({ operation, a, b }: { operation: string, a: number, b: number }) {
+    console.debug(`[DEBUG] Performing math operation: ${operation} with a=${a}, b=${b}`);
     if (operation === "divide" && b === 0) throw new Error("Division by zero");
     switch (operation) {
         case "add": return a + b;
