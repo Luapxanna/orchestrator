@@ -1,4 +1,4 @@
-import { db } from "./infra";
+import { db } from "../infra";
 import { api } from "encore.dev/api";
 
 export async function storeWorkflowResult(
