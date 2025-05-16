@@ -1,4 +1,5 @@
 {
 	"id":   "orchestrator-b4bi",
-	"lang": "typescript"
+	"lang": "typescript",
+	"name": "orchestrator-app",
 }
