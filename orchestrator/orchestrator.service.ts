@@ -2,13 +2,8 @@ import { api } from "encore.dev/api";
 import { logStep } from "../logger/logger.service";
 import { tracingMiddleware } from "../shared/middleware";
 import { WorkerService } from "../workers/workers.service";
-/**
- * Represents a single task in the sequence.
- */
-type TaskStep = {
-    taskID: string;
-    params?: any;
-};
+import { TaskStep } from "../shared/type";
+
 
 const MAX_RETRIES = 3;
 
