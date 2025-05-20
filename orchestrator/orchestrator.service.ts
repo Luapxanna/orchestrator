@@ -3,7 +3,7 @@ import { logStep } from "../logger/logger.service";
 import { tracingMiddleware } from "../shared/middleware";
 import { WorkerService } from "../workers/workers.service";
 import { TaskStep } from "../shared/type";
-
+import { storeWorkflowResult, storeStepOutput, storeWorkflowLog } from "../resultCollector/infra.service";
 
 const MAX_RETRIES = 3;
 
@@ -35,37 +35,64 @@ async function callWorkerWithRetry(taskID: string, params: any, traceId: string)
  * Accepts a list of tasks with parameters, calls worker services in order,
  * and passes output between steps.
  * Uses tracingMiddleware to add a traceId to each call.
- * Only returns last task's result
  */
 export const runTaskSequence = api({
     method: "POST",
     path: "/workflow/run-sequence",
     expose: false, // Internal endpoint
-}, async ({task_sequence, req }: {task_sequence: TaskStep[], req: any }) => {
-    let lastOutput: any = undefined;
-    const results: any [] = []
-    // Get traceId from middleware context, fallback if missing
+}, async ({ task_sequence, req }: { task_sequence: TaskStep[], req: any }) => {
+    const workflowId = `workflow-${Date.now()}`;
     const traceId = (req as typeof req & { context?: { traceId?: string } }).context?.traceId ?? "no-trace";
 
-    for (const step of task_sequence) {
-        // Merge previous output and traceId into current params if needed
-        const params = { ...step.params, previousOutput: lastOutput, traceId };
+    // Insert workflow into the database
+    await storeWorkflowResult(workflowId, task_sequence, "in_progress");
 
-        // Call the worker service for this task with retry logic
-        if (!workerMap[step.taskID]) {
-            await logStep(step.taskID, `Unknown worker [traceId: ${traceId}]`, "error",);
-            throw new Error(`Unknown worker: ${step.taskID}`);
+    let lastOutput: any = undefined;
+    const results: any[] = [];
+
+    try {
+        for (const [index, step] of task_sequence.entries()) {
+            const params = { ...step.params, previousOutput: lastOutput, traceId };
+
+            if (!workerMap[step.taskID]) {
+                await logStep(step.taskID, `Unknown worker [traceId: ${traceId}]`, "error");
+                throw new Error(`Unknown worker: ${step.taskID}`);
+            }
+
+            const startTime = new Date();
+            lastOutput = await callWorkerWithRetry(step.taskID, params, traceId);
+            const endTime = new Date();
+
+            // Store step output in the database
+            await storeStepOutput(workflowId, index, step.taskID, lastOutput, "success");
+
+            results.push({
+                taskID: step.taskID,
+                output: lastOutput,
+                started_at: startTime,
+                finished_at: endTime,
+            });
         }
-        lastOutput = await callWorkerWithRetry(step.taskID, params, traceId);
-        results.push({
-            taskID: step.taskID,
-            output: lastOutput
-        })
-    }
 
-    return {
-        results,
-        traceId,
-        message: "Task sequence completed"
-    };
+        // Update workflow status to "completed"
+        await storeWorkflowResult(workflowId, task_sequence, "completed");
+
+        // Log workflow success
+        await storeWorkflowLog(workflowId, null, "Workflow completed successfully", "success");
+
+        return {
+            workflowId,
+            results,
+            traceId,
+            message: "Task sequence completed",
+        };
+    } catch (error: any) {
+        // Update workflow status to "failed"
+        await storeWorkflowResult(workflowId, task_sequence, "failed");
+
+        // Log workflow failure
+        await storeWorkflowLog(workflowId, null, `Workflow failed: ${error.message}`, "error");
+
+        throw error;
+    }
 });

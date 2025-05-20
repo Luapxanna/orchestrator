@@ -18,9 +18,7 @@ export async function storeStepOutput(
 ) {
     await 
         db.exec`INSERT INTO workflow_step (workflow_id, step_index, task_id, output, status) 
-         VALUES 
-         ${workflowId}, ${stepIndex}, ${taskId}, ${JSON.stringify(output)}, ${status}`,
-        [workflowId, stepIndex, taskId, JSON.stringify(output), status]
+        VALUES (${workflowId}, ${stepIndex}, ${taskId}, ${JSON.stringify(output)}, ${status})`;
   
 }
 
@@ -31,8 +29,7 @@ export async function storeWorkflowLog(
     status: string
 ) {
     await db.exec
-        `INSERT INTO workflow_log (workflow_id, step_index, message, status) VALUES ${workflowId}, ${stepIndex}, ${message}, ${status}`,
-        [workflowId, stepIndex, message, status]
+        `INSERT INTO workflow_log (workflow_id, step_index, message, status) VALUES (${workflowId}, ${stepIndex}, ${message}, ${status})`;
 
 }
 
@@ -52,7 +49,7 @@ export const getWorkflowResult = api({
     path: "/workflow/result/:id",
     expose: true,
 }, async ({ id }: { id: string }) => {
-    const steps = await db.query
+    const steps = await db.queryRow
         `SELECT step_index, task_id, output, status FROM workflow_step WHERE workflow_id = ${id} ORDER BY step_index`
     return { id, steps };
 });
