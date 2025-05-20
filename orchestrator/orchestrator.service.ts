@@ -35,6 +35,7 @@ async function callWorkerWithRetry(taskID: string, params: any, traceId: string)
  * Accepts a list of tasks with parameters, calls worker services in order,
  * and passes output between steps.
  * Uses tracingMiddleware to add a traceId to each call.
+ * Only returns last task's result
  */
 export const runTaskSequence = api({
     method: "POST",

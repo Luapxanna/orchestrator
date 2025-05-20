@@ -5,7 +5,12 @@ import { v4 as uuidv4 } from "uuid";
 // Middleware that adds a traceId to each request
 // No need to extend MiddlewareRequest; use type assertion for context property if needed
 
-export const tracingMiddleware = middleware(async (req, next) => {
+export const tracingMiddleware = middleware(
+    {
+        target: undefined,
+        
+    },
+    async (req, next) => {
     // Generate a trace ID for each request
     const traceId = uuidv4();
 
