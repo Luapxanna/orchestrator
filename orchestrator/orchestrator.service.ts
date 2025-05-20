@@ -43,6 +43,7 @@ export const runTaskSequence = api({
     expose: false, // Internal endpoint
 }, async ({task_sequence, req }: {task_sequence: TaskStep[], req: any }) => {
     let lastOutput: any = undefined;
+    const results: any [] = []
     // Get traceId from middleware context, fallback if missing
     const traceId = (req as typeof req & { context?: { traceId?: string } }).context?.traceId ?? "no-trace";
 
@@ -56,10 +57,14 @@ export const runTaskSequence = api({
             throw new Error(`Unknown worker: ${step.taskID}`);
         }
         lastOutput = await callWorkerWithRetry(step.taskID, params, traceId);
+        results.push({
+            taskID: step.taskID,
+            output: lastOutput
+        })
     }
 
     return {
-        result: lastOutput,
+        results,
         traceId,
         message: "Task sequence completed"
     };
